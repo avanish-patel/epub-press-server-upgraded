@@ -1,0 +1,75 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: epub-press-server
+  labels:
+    app: epub-press-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: epub-press-server
+  template:
+    metadata:
+      labels:
+        app: epub-press-server
+    spec:
+      containers:
+        - name: epub-press-server
+          image: avanishpatel/epub-press-server:latest
+          ports:
+            - containerPort: 3000
+          env:
+            - name: DB_DIALECT
+              value: "sqlite"
+            - name: DB_STORAGE
+              value: "./tmp/db_dev.sqlite"
+            - name: MAIL_SERVER_HOST
+              value: "smtp.gmail.com"
+            - name: MAIL_SERVER_PORT
+              value: "465"
+            - name: MAIL_SERVER_TLS
+              value: "true"
+            - name: MAIL_SERVER_USERNAME
+              value: "kindle.epub.service@gmail.com"
+            - name: MAIL_SERVER_PASSWORD
+              value: "ezuz decw nqrr khfm"
+            - name: MAIL_SENDER_ADDRESS
+              value: "kindle.epub.service@gmail.com"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: epub-press-server
+spec:
+  selector:
+    app: epub-press-server
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 3000
+  type: ClusterIP
+
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: epub-press-server-ingress
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+spec:
+  tls:
+    - hosts:
+        - epub-press-server.64.181.209.134.nip.io
+      secretName: epub-press-server-tls
+  ingressClassName: nginx
+  rules:
+    - host: epub-press-server.64.181.209.134.nip.io
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: epub-press-server
+                port:
+                  number: 80
